@@ -1,6 +1,6 @@
 {
-  "name": "HGHub 蓝果短剧实验插件",
-  "description": "蓝果网页数据源测试版。尚未验证真实 HGHub 播放；不绕过权限或 DRM。",
+  "name": "HGHub 第三方实验插件：蓝果与 HiTwo",
+  "description": "公开网站信息源测试插件列表。HiTwo 官网目录版不支持 HGhub 内直接播放；蓝果播放也尚未实机验证。",
   "plugins": [
     {
       "id": "community.languo.web",
@@ -8,6 +8,13 @@
       "version": "0.2.0",
       "description": "真实网页搜索结果路径（短剧/GV）、分类/详情/外部播放回退；未经 HGHub 实机验证",
       "url": "languo-hghub-source.js"
+    },
+    {
+      "id": "community.hitwo.web.catalog",
+      "name": "HiTwo 嗨兔（官网目录版）",
+      "version": "0.1.0",
+      "description": "读取 xkhuyu.top 公开短剧目录/排行榜/详情/分集；仅打开官方详情页，无法 HGhub 内播放",
+      "url": "hitwo-hghub-source.js"
     }
   ]
 }
