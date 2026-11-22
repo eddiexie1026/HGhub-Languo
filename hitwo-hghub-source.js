@@ -11,12 +11,12 @@
 export const meta = {
   id: 'community.hitwo.web.catalog',
   name: 'HiTwo 嗨兔（官网目录版）',
-  version: '0.1.0',
+  version: '0.1.1',
   protocol: 1,
   kind: 'source',
   mature: true,
   author: 'Community prototype',
-  description: '基于 xkhuyu.top 官方公开网页：短剧列表、排行榜、作品详情与分集目录。网页不提供已验证的播放流，观看需官方 App。本插件不支持直接在 HGhub 播放。搜索仅扫描少量目录页。',
+  description: '基于 xkhuyu.top 官方公开网页：短剧列表、排行榜、作品详情与分集目录。网页不提供已验证的播放流，观看需官方 App。本插件不支持直接在 HGhub 播放，点击分集会明确提示。搜索仅扫描少量目录页。',
   homepage: 'https://xkhuyu.top/',
   updateUrl: 'https://raw.githubusercontent.com/eddiexie1026/HGhub-Languo/main/hitwo-hghub-source.js',
   linkDomains: ['xkhuyu.top', 'www.xkhuyu.top'],
@@ -170,22 +170,24 @@ export default function(hg) {
     return { items: extractCatalog(doc, 50), next: null };
   }
 
-  function episodeCountFrom(doc) {
-    const text = doc.text();
-    const patterns = [
-      /本页共收录\s*(\d{1,4})\s*集正片/,
-      /分集目录[\s\S]{0,90}?共\s*(\d{1,4})\s*集/,
-      /全集\s*(\d{1,4})\s*集/
-    ];
-    for (const re of patterns) {
-      const m = text.match(re);
-      if (m) {
-        const n = Number(m[1]);
-        if (n > 0 && n <= 5000) return n;
-      }
+  function episodeIdsFrom(doc) {
+    // Use the real numbered entries, NOT the claimed total count:
+    // some detail pages show null labels or have holes in numbering.
+    const body = String(doc.text() || '');
+    const start = body.indexOf('分集目录');
+    if (start < 0) return [];
+    const tail = body.indexOf('相关推荐', start);
+    const section = body.slice(start, tail > start ? tail : Math.min(body.length, start + 30000));
+    const unique = Object.create(null), ids = [];
+    const matcher = /第\s*0*(\d{1,4})\s*集/g;
+    let match;
+    while ((match = matcher.exec(section)) !== null) {
+      const n = Number(match[1]);
+      if (!Number.isSafeInteger(n) || n < 1 || n > 2000 || unique[n]) continue;
+      unique[n] = true;
+      ids.push(n);
     }
-    // The detail page may change layout, but do not invent episodes.
-    return 0;
+    return ids.sort((a, b) => a - b);
   }
 
   function descriptionFrom(doc) {
@@ -210,25 +212,22 @@ export default function(hg) {
         if (!title) {
           throw new hg.PluginError('UPSTREAM_CHANGED', '官网作品详情缺少标题');
         }
-        const n = episodeCountFrom(doc);
-        if (!n) {
-          throw new hg.PluginError('UPSTREAM_CHANGED', '官网尚未提供可识别的分集信息');
+        const ids = episodeIdsFrom(doc);
+        if (ids.length === 0) {
+          throw new hg.PluginError('UPSTREAM_CHANGED', '官网分集目录未识别到有效集数');
         }
-        const episodes = [];
-        for (let i = 1; i <= n; i++) {
-          episodes.push({
-            id: String(i),
-            index: i,
-            label: '第 ' + i + ' 集（App 观看）',
-            episodeNumber: i
-          });
-        }
+        const episodes = ids.map((n, i) => ({
+          id: String(n),
+          index: i + 1,
+          label: '第 ' + n + ' 集（官方 App 观看）',
+          episodeNumber: n
+        }));
         const result = {
           id: mediaId,
           title: title,
           type: 'short',
-          description: '当前官网分集点击后引导下载 App，没有已验证的网页播放流。本 HGhub 插件仅提供目录，需使用官方 Hitwo App 观看。',
-          episodeCount: n,
+          description: '当前官网分集点击后引导下载 App，没有已验证的网页播放流。本 HGhub 插件仅提供目录，点击分集无法在 HGhub 播放，需使用官方 Hitwo App 观看。',
+          episodeCount: ids.length,
           playlists: [{
             id: 'main',
             kind: 'main',
@@ -248,15 +247,13 @@ export default function(hg) {
         if (!/^\d+$/.test(String(episodeId || ''))) {
           throw new hg.PluginError('INVALID_ARGUMENT', '分集编号无效');
         }
-        // Real website details route only. No playback API or stream verified.
-        return {
-          streams: [{
-            kind: 'external',
-            url: dramaUrl(mediaId),
-            label: '嗨兔官网详情页（需在 App 中观看）',
-            external: { app: '浏览器' }
-          }]
-        };
+        // No real website media URL has been verified. Returning the detail
+        // webpage as kind:external previously opened the HGhub player with
+        // an unplayable address. Fail explicitly instead of faking a stream.
+        throw new hg.PluginError(
+          'UNSUPPORTED',
+          'HiTwo 官网该分集仅引导在官方 App 观看，目前无已验证的 HGhub 播放地址。请使用官方 App。'
+        );
       },
 
       matchUrl({ url }) {
