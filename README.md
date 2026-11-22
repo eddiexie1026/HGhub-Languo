@@ -1,4 +1,4 @@
-# HGHub 蓝果短剧网页源（实验版）
+# HGHub 第三方网页源：蓝果 + HiTwo（实验版）
 
 适用于 HGHub HPP 1.0 的第三方网页数据源实验插件，不是蓝果或 HGHub 官方插件。
 
@@ -48,3 +48,30 @@ HGHub 官方协议：https://minireel.github.io/HGhub/docs/developers/quickstart
 - 搜索结果只取搜索页 `<main>` 里的作品链接，避免把全站热门榜单当成搜索结果。
 - 保留原插件 ID 与 Raw URL，可通过 HGHub 现有订阅链接更新。
 - **未经过目标站点非空搜索结果、真实 HGHub 客户端及播放链路的完整端到端验证。**
+
+
+## HiTwo 嗨兔（v0.1.0 官网目录版）
+
+**单插件导入：**
+
+```
+https://raw.githubusercontent.com/eddiexie1026/HGhub-Languo/main/hitwo-hghub-source.js
+```
+
+原来的 `manifest.json` 订阅地址现包含两个独立插件，蓝果原插件保持不变。
+
+**官网来源与已确认的路径：**
+- https://xkhuyu.top/ （Hitwo App 官网）
+- https://xkhuyu.top/dramas/ （短剧库）
+- https://xkhuyu.top/dramas/page/2/ （实际目录分页）
+- https://xkhuyu.top/rank/ （排行榜）
+- https://xkhuyu.top/dramas/260/ （单作品详情与分集目录范例）
+
+**功能与限制（非常重要）：**
+- 支持目录/榜单、作品详情、分集编号的网页解析。这些页面结构已通过公开网站核实，尚未经过 HGhub 客户端实机端到端验证。
+- 搜索只扫描排行榜与目录前 1–5 页的作品**标题**。这不是手机 App 真正的数据库搜索，因此有遗漏。
+- 官网详情页明确写明“点击任意分集下载 App 观看”，无法验证网页播放器或可用于 HGhub 的公开视频流。
+- 选集后仅能以外部浏览器打开该作品的官网详情页，由用户自行前往官方 App 观看。此行为**不是 HGhub 直接播放**。
+- 不绕过登录、付费剧集解锁或 DRM，也不收集账号密码。
+- 不需要下载本地 JavaScript 文件。可以把上面的 HTTPS Raw URL 直接贴到 HGhub 的“导入与列表订阅”。
+- 许可证、地域及其他使用条件以 Hitwo 官方网站/客户端规定为准。
