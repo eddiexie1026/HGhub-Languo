@@ -22,8 +22,6 @@ export const meta = {
   defaultHeaders: { Referer: 'https://languo.ai/' },
   timeouts: { read: 25, playback: 30 },
   settings: [
-    { key: 'searchPages', type: 'select', label: '搜索扫描页数（每个分类）', default: '2',
-      options: [{ value: '1', label: '1 页（较快）' }, { value: '2', label: '2 页' }, { value: '3', label: '3 页' }] },
     { key: 'externalOnly', type: 'switch', label: '始终使用网页播放', default: false }
   ]
 };
