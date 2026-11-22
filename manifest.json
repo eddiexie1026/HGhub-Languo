@@ -5,8 +5,8 @@
     {
       "id": "community.languo.web",
       "name": "蓝果短剧（网页测试版）",
-      "version": "0.1.0",
-      "description": "分类/网页解析/外部播放回退；尚未进行 HGHub 实机验证。",
+      "version": "0.2.0",
+      "description": "真实网页搜索结果路径（短剧/GV）、分类/详情/外部播放回退；未经 HGHub 实机验证",
       "url": "languo-hghub-source.js"
     }
   ]
