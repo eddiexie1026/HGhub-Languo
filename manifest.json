@@ -12,8 +12,8 @@
     {
       "id": "community.hitwo.web.catalog",
       "name": "HiTwo 嗨兔（官网目录版）",
-      "version": "0.1.0",
-      "description": "读取 xkhuyu.top 公开短剧目录/排行榜/详情/分集；仅打开官方详情页，无法 HGhub 内播放",
+      "version": "0.1.1",
+      "description": "HiTwo 官网目录/排行榜/作品详情；仅展示网页中真实有效分集，无法在 HGhub 内播放（明确提示）",
       "url": "hitwo-hghub-source.js"
     }
   ]
