@@ -9,12 +9,12 @@
 export const meta = {
   id: 'community.languo.web',
   name: '蓝果短剧（网页测试版）',
-  version: '0.1.0',
+  version: '0.2.0',
   protocol: 1,
   kind: 'source',
   mature: true,
   author: 'Community prototype',
-  description: '蓝果网页目录/分集入口；优先识别页面明示的 HLS/MP4，无法获取时通过浏览器打开原站。尚未完成 HGhub 实机验证。',
+  description: '蓝果网页目录/搜索结果页/分集入口；优先识别页面明示的 HLS/MP4，无法获取时通过浏览器打开原站。尚未完成 HGhub 实机验证。',
   homepage: 'https://languo.ai/',
   updateUrl: 'https://raw.githubusercontent.com/eddiexie1026/HGhub-Languo/main/languo-hghub-source.js',
   linkDomains: ['languo.ai', 'www.languo.ai'],
@@ -97,9 +97,9 @@ export default function(hg) {
       .replace(/^\s*更新至\s*\d+\s*集\s*/g, '')
       .trim();
   }
-  function findMediaLinks(doc, maxItems) {
+  function findMediaLinks(doc, maxItems, selector) {
     const out = [], seen = Object.create(null);
-    const candidates = doc.select('a[href*="/video/"]');
+    const candidates = doc.select(selector || 'a[href*="/video/"]');
     for (const a of candidates) {
       const href = a.attr('href') || '';
       const id = mediaIdFromUrl(href);
@@ -246,34 +246,61 @@ export default function(hg) {
     },
     search: {
       async search({ query, cursor }, ctx) {
-        const q = String(query || '').trim().toLocaleLowerCase();
+        const q = String(query || '').trim();
         if (!q) return { items: [], next: null };
-        const selectedPages = Number(hg.settings.get('searchPages') || '2');
-        const pages = Math.max(1, Math.min(3, Number.isFinite(selectedPages) ? selectedPages : 2));
-        const tasks = [];
-        // Bounded index scan only; the site's real search endpoint is not verified.
-        // cursor intentionally ignored: a single complete bounded result page.
-        for (const cat of ['duanju', 'gv']) {
-          for (let p = 1; p <= pages; p++) {
-            tasks.push(listCategory(cat, String(p), ctx).catch(error => {
-              if (ctx && ctx.signal && ctx.signal.aborted) throw error;
-              hg.log.warn('分类页面未能获取：' + cat + ' 第 ' + p + ' 页');
-              return { items: [], next: null };
-            }));
+        if (q.length > 100) throw new hg.PluginError('INVALID_ARGUMENT', '搜索关键词过长');
+
+        const p = Number(cursor || '1');
+        if (!Number.isSafeInteger(p) || p < 1 || p > 1000) {
+          throw new hg.PluginError('INVALID_ARGUMENT', '搜索分页参数无效');
+        }
+
+        // The official website uses navigable HTML search result pages:
+        //   /search/video/<encoded query>/
+        //   /search/gv/<encoded query>/
+        // Unlike the old v0.1.0 behavior, we DO NOT scan just the first
+        // two pages of the generic catalog to approximate search.
+        const keyword = encodeURIComponent(q);
+        async function getResults(type) {
+          const base = BASE + '/search/' + type + '/' + keyword + '/';
+          const url = p === 1 ? base : base + p + '/';
+          const { doc } = await requestHtml(url, ctx);
+          // Limit to the actual main search results; global search overlay,
+          // hot-ranking links, and recommended cards must not contaminate it.
+          const items = findMediaLinks(doc, 120, 'main a[href*="/video/"]');
+          let hasNext = false;
+          const nextSuffix = '/search/' + type + '/' + keyword.toLowerCase() + '/' + (p + 1) + '/';
+          for (const a of doc.select('main a[href]')) {
+            const href = String(a.attr('href') || '').toLowerCase().split('?')[0].split('#')[0];
+            if (href.endsWith(nextSuffix)) {
+              hasNext = true;
+              break;
+            }
+          }
+          return { items, hasNext };
+        }
+
+        const results = await Promise.allSettled([getResults('video'), getResults('gv')]);
+        const good = results.filter(r => r.status === 'fulfilled');
+        if (good.length === 0) {
+          throw new hg.PluginError('UPSTREAM_ERROR', '蓝果搜索结果页暂时不可访问');
+        }
+        const seen = Object.create(null), items = [];
+        let hasNext = false;
+        for (const result of good) {
+          const { items: current, hasNext: more } = result.value;
+          if (more) hasNext = true;
+          for (const item of current) {
+            if (!seen[item.id]) {
+              seen[item.id] = true;
+              items.push(item);
+            }
           }
         }
-        const results = await Promise.all(tasks);
-        const all = [];
-        for (const result of results) all.push(...result.items);
-        const seen = Object.create(null);
-        const items = [];
-        for (const item of all) {
-          if (!item.title.toLocaleLowerCase().includes(q) || seen[item.id]) continue;
-          seen[item.id] = true;
-          items.push(item);
-          if (items.length >= 100) break;
+        if (good.length !== results.length) {
+          hg.log.warn('蓝果部分搜索频道未能加载，请重试');
         }
-        return { items, next: null };
+        return { items, next: hasNext ? String(p + 1) : null };
       }
     }
   };
